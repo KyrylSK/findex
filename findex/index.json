@@ -1,0 +1,829 @@
+{
+  "store_positions": false,
+  "doc_meta": {
+    "0": 102,
+    "1": 103
+  },
+  "postings": {
+    "python": [
+      {
+        "doc_id": 0,
+        "frequency": 4
+      }
+    ],
+    "is": [
+      {
+        "doc_id": 0,
+        "frequency": 4
+      },
+      {
+        "doc_id": 1,
+        "frequency": 2
+      }
+    ],
+    "a": [
+      {
+        "doc_id": 0,
+        "frequency": 4
+      },
+      {
+        "doc_id": 1,
+        "frequency": 6
+      }
+    ],
+    "high-level": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "general-purpose": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "programming": [
+      {
+        "doc_id": 0,
+        "frequency": 5
+      }
+    ],
+    "language": [
+      {
+        "doc_id": 0,
+        "frequency": 3
+      }
+    ],
+    "its": [
+      {
+        "doc_id": 0,
+        "frequency": 3
+      }
+    ],
+    "design": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "philosophy": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "emphasizes": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "code": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "readability": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "with": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      },
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "the": [
+      {
+        "doc_id": 0,
+        "frequency": 4
+      },
+      {
+        "doc_id": 1,
+        "frequency": 2
+      }
+    ],
+    "use": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "of": [
+      {
+        "doc_id": 0,
+        "frequency": 2
+      },
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "significant": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "indentation": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "dynamically": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "typed": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "and": [
+      {
+        "doc_id": 0,
+        "frequency": 4
+      }
+    ],
+    "garbage-collected": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "it": [
+      {
+        "doc_id": 0,
+        "frequency": 3
+      }
+    ],
+    "supports": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "multiple": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "paradigms": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "including": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "structured": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "particularly": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "procedural": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "object-oriented": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "functional": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "often": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      },
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "described": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "as": [
+      {
+        "doc_id": 0,
+        "frequency": 4
+      },
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "batteries-included": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "due": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "to": [
+      {
+        "doc_id": 0,
+        "frequency": 3
+      },
+      {
+        "doc_id": 1,
+        "frequency": 3
+      }
+    ],
+    "comprehensive": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "standard": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "library": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "guido": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "van": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "rossum": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "began": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "working": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "on": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      },
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "in": [
+      {
+        "doc_id": 0,
+        "frequency": 2
+      },
+      {
+        "doc_id": 1,
+        "frequency": 4
+      }
+    ],
+    "late": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "1980s": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "successor": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "abc": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "first": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "released": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "1991": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "0": [
+      {
+        "doc_id": 0,
+        "frequency": 2
+      }
+    ],
+    "9": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "python's": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "consistently": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "ranking": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "one": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "most": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "popular": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "languages": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "testament": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "flexibility": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "community": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "support": [
+      {
+        "doc_id": 0,
+        "frequency": 1
+      }
+    ],
+    "search": [
+      {
+        "doc_id": 1,
+        "frequency": 7
+      }
+    ],
+    "engine": [
+      {
+        "doc_id": 1,
+        "frequency": 2
+      }
+    ],
+    "software": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "system": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "designed": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "carry": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "out": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "web": [
+      {
+        "doc_id": 1,
+        "frequency": 5
+      }
+    ],
+    "searches": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "they": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "world": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "wide": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "systematic": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "way": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "for": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "particular": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "information": [
+      {
+        "doc_id": 1,
+        "frequency": 2
+      }
+    ],
+    "specified": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "textual": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "query": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "results": [
+      {
+        "doc_id": 1,
+        "frequency": 3
+      }
+    ],
+    "are": [
+      {
+        "doc_id": 1,
+        "frequency": 3
+      }
+    ],
+    "generally": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "presented": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "line": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "referred": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "pages": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "serps": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "some": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "engines": [
+      {
+        "doc_id": 1,
+        "frequency": 2
+      }
+    ],
+    "also": [
+      {
+        "doc_id": 1,
+        "frequency": 2
+      }
+    ],
+    "mine": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "data": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "available": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "databases": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "or": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "open": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "directories": [
+      {
+        "doc_id": 1,
+        "frequency": 2
+      }
+    ],
+    "unlike": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "which": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "maintained": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "only": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "by": [
+      {
+        "doc_id": 1,
+        "frequency": 2
+      }
+    ],
+    "human": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "editors": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "maintain": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "real-time": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "running": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "an": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "algorithm": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "crawler": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "this": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "exactly": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "what": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "we": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "trying": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "simulate": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "our": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "state-of-the-art": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "findex": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ],
+    "project": [
+      {
+        "doc_id": 1,
+        "frequency": 1
+      }
+    ]
+  }
+}
