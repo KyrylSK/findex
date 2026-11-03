@@ -2,6 +2,10 @@ from dataclasses import dataclass
 from typing import Optional
 from collections import defaultdict, Counter
 
+from collections.abc import Mapping
+from functools import cached_property
+from contextlib import contextmanager
+
 import pickle
 import json
 
@@ -18,7 +22,7 @@ class Posting:
     # Позиції токенів — опційно (кортеж займає менше пам'яті, ніж список)
     positions: Optional[tuple[int, ...]] = None
 
-class InvertedIndex:
+class InvertedIndex(Mapping):
     def __init__(self, store_positions: bool = False):
         self.store_positions = store_positions
         # defaultdict автоматично створює порожній список, якщо терміна ще немає в словнику
@@ -45,7 +49,52 @@ class InvertedIndex:
             positions = tuple(term_positions[term]) if self.store_positions else None
             posting = Posting(doc_id=doc_id, frequency=count, positions=positions)
             self.postings[term].append(posting)
-            
+
+    # ==========================================
+    # КРОК 1: Dunder-методи (Data Model Python)
+    # ==========================================
+    def __getitem__(self, term: str) -> list[Posting]:
+        """Дозволяє писати index['python']"""
+        return self.postings.get(term, [])
+
+    def __iter__(self):
+        """Дозволяє ітерувати: for term in index"""
+        return iter(self.postings)
+
+    def __len__(self) -> int:
+        """Дозволяє писати len(index)"""
+        return len(self.postings)
+
+    def __contains__(self, term: str) -> bool:
+        """Дозволяє писати 'python' in index"""
+        return term in self.postings
+
+    def __repr__(self) -> str:
+        """Гарне виведення при print(index)"""
+        return f"<InvertedIndex: {len(self)} terms, {self.num_docs()} docs>"
+
+    # ==========================================
+    # Властивості для ранжування (TF-IDF / BM25)
+    # ==========================================
+    def num_docs(self) -> int:
+        """Загальна кількість документів в індексі."""
+        return len(self.doc_meta)
+
+    def df(self, term: str) -> int:
+        """Document Frequency: в скількох документах зустрічається термін."""
+        return len(self.postings.get(term, []))
+
+    @cached_property
+    def avg_doc_length(self) -> float:
+        """
+        Середня довжина документа.
+        @cached_property запам'ятовує результат, щоб не рахувати двічі.
+        """
+        if not self.doc_meta:
+            return 0.0
+        total_length = sum(meta.length for meta in self.doc_meta.values())
+        return total_length / self.num_docs()
+    
     def build_from_pipeline(self, pipeline):
         """Будує індекс одним проходом по лінивому пайплайну з першої лаби."""
         for doc_id, tokens in pipeline:
@@ -160,6 +209,38 @@ class InvertedIndex:
             index.postings[term] = [Posting(doc_id=p['doc_id'], frequency=p['frequency']) for p in posts]
             
         return index
+
+@contextmanager
+def open_index(filepath: str):
+    """
+    Context Manager для безпечного відкриття індексу.
+    Гарантує, що файл звільниться (закриється) навіть при помилці.
+    Використання: with open_index('index.json') as idx: ...
+    """
+    is_json = str(filepath).endswith('.json')
+    mode = 'r' if is_json else 'rb'
+    encoding = 'utf-8' if is_json else None
+    
+    # Відкриваємо файл тут
+    f = open(filepath, mode, encoding=encoding)
+    try:
+        if is_json:
+            data = json.load(f)
+            index = InvertedIndex(store_positions=data.get('store_positions', False))
+            index.doc_meta = {int(doc_id): DocMeta(length=length) for doc_id, length in data['doc_meta'].items()}
+            for term, posts in data['postings'].items():
+                index.postings[term] = [Posting(doc_id=p['doc_id'], frequency=p['frequency']) for p in posts]
+        else:
+            data = pickle.load(f)
+            index = InvertedIndex(store_positions=data.get('store_positions', False))
+            index.postings = data['postings']
+            index.doc_meta = data['doc_meta']
+            
+        yield index  # Віддаємо індекс для роботи всередині блоку with
+    finally:
+        # Це виконається обов'язково
+        f.close()
+
 if __name__ == '__main__':
     import argparse
     import time
