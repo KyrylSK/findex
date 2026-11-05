@@ -1,6 +1,6 @@
 import re
 from dataclasses import dataclass
-from typing import Set
+from typing import Set, Tuple, List
 from findex.index import InvertedIndex
 
 class QueryNode:
@@ -8,14 +8,13 @@ class QueryNode:
     def evaluate(self, index: InvertedIndex) -> Set[int]:
         raise NotImplementedError
     
-    # Перевантаження операторів, щоб можна було писати: Term("a") & (Term("b") | Term("c"))
-    def __and__(self, other):
+    def __and__(self, other: 'QueryNode') -> 'QueryNode':
         return And(self, other)
         
-    def __or__(self, other):
+    def __or__(self, other: 'QueryNode') -> 'QueryNode':
         return Or(self, other)
         
-    def __invert__(self):
+    def __invert__(self) -> 'QueryNode':
         return Not(self)
 
 @dataclass
@@ -23,35 +22,33 @@ class Term(QueryNode):
     word: str
     
     def evaluate(self, index: InvertedIndex) -> Set[int]:
-        # Повертає множину ID документів, де є це слово
-        postings = index.get(self.word, [])
+        postings = index.postings.get(self.word, [])
         return {p.doc_id for p in postings}
 
 @dataclass
 class Phrase(QueryNode):
-    words: list[str]
+    words: List[str]
     
     def evaluate(self, index: InvertedIndex) -> Set[int]:
         if not self.words: 
             return set()
         if not index.store_positions:
-            raise ValueError("Індекс повинен зберігати позиції (store_positions=True) для фразового пошуку")
+            raise ValueError("Індекс повинен зберігати позиції")
         
-        # Спочатку знаходимо документи, де є всі слова з фрази
-        doc_ids = set.intersection(*[Term(w).evaluate(index) for w in self.words])
-        result = set()
+        # Вирішення проблеми з типами: явно вказуємо типи списку та використовуємо методи об'єктів
+        term_sets: List[Set[int]] = [Term(w).evaluate(index) for w in self.words]
+        doc_ids: Set[int] = term_sets[0].intersection(*term_sets[1:])
+        
+        result: Set[int] = set()
         
         for doc_id in doc_ids:
-            # Збираємо позиції кожного слова в цьому документі
-            word_positions = []
+            word_positions: List[Tuple[int, ...]] = []
             for w in self.words:
-                for p in index[w]:
-                    if p.doc_id == doc_id:
-                        # p.positions - це кортеж, перетворюємо його для зручності
+                for p in index.postings.get(w, []):
+                    if p.doc_id == doc_id and p.positions is not None:
                         word_positions.append(p.positions)
                         break
             
-            # Перевіряємо, чи йдуть слова підряд
             if not word_positions or not word_positions[0]:
                 continue
                 
@@ -64,7 +61,6 @@ class Phrase(QueryNode):
                 if is_phrase:
                     result.add(doc_id)
                     break
-                    
         return result
 
 @dataclass
@@ -73,7 +69,6 @@ class And(QueryNode):
     right: QueryNode
     
     def evaluate(self, index: InvertedIndex) -> Set[int]:
-        # Перетин множин
         return self.left.evaluate(index) & self.right.evaluate(index)
 
 @dataclass
@@ -82,7 +77,6 @@ class Or(QueryNode):
     right: QueryNode
     
     def evaluate(self, index: InvertedIndex) -> Set[int]:
-        # Об'єднання множин
         return self.left.evaluate(index) | self.right.evaluate(index)
 
 @dataclass
@@ -90,34 +84,27 @@ class Not(QueryNode):
     child: QueryNode
     
     def evaluate(self, index: InvertedIndex) -> Set[int]:
-        # Усі документи мінус ті, що знайшов дочірній вузол
-        all_docs = set(index.doc_meta.keys())
+        all_docs: Set[int] = set(index.doc_meta.keys())
         return all_docs - self.child.evaluate(index)
 
-# ==========================================
-# ПАРСЕР (Рекурсивний спуск)
-# ==========================================
-
 def parse_query(q: str) -> QueryNode:
-    """Перетворює рядок запиту на дерево вузлів (AST)."""
-    # Розбиваємо запит на токени: фрази в лапках, дужки, AND, OR, NOT та звичайні слова
-    tokens = re.findall(r'"[^"]*"|\(|\)|AND|OR|NOT|\w+', q)
+    tokens: List[str] = re.findall(r'"[^"]*"|\(|\)|AND|OR|NOT|\w+', q)
     
-    def parse_expr(tokens):
+    def parse_expr(tokens: List[str]) -> Tuple[QueryNode, List[str]]:
         node, tokens = parse_term(tokens)
         while tokens and tokens[0] == 'OR':
             right, tokens = parse_term(tokens[1:])
             node = Or(node, right)
         return node, tokens
         
-    def parse_term(tokens):
+    def parse_term(tokens: List[str]) -> Tuple[QueryNode, List[str]]:
         node, tokens = parse_factor(tokens)
         while tokens and tokens[0] == 'AND':
             right, tokens = parse_factor(tokens[1:])
             node = And(node, right)
         return node, tokens
         
-    def parse_factor(tokens):
+    def parse_factor(tokens: List[str]) -> Tuple[QueryNode, List[str]]:
         if not tokens:
             raise ValueError("Неочікуваний кінець запиту")
         
@@ -128,17 +115,15 @@ def parse_query(q: str) -> QueryNode:
         elif t == '(':
             node, tokens = parse_expr(tokens[1:])
             if not tokens or tokens[0] != ')':
-                raise ValueError("Не вистачає закриваючої дужки ')'")
+                raise ValueError("Не вистачає закриваючої дужки")
             return node, tokens[1:]
         elif t.startswith('"'):
-            # Фразовий пошук
             words = t.strip('"').lower().split()
             return Phrase(words), tokens[1:]
         else:
-            # Звичайне слово
             return Term(t.lower()), tokens[1:]
             
     node, remaining = parse_expr(tokens)
     if remaining:
-        raise ValueError(f"Неочікувані токени в кінці запиту: {remaining}")
+        raise ValueError(f"Неочікувані токени: {remaining}")
     return node
