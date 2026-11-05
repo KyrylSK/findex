@@ -1,31 +1,19 @@
-import tracemalloc
-import time
+from pathlib import Path
+from typing import Counter as CounterType
 from collections import Counter
-from src.findex.core import iter_documents, tokenize
+from findex.core import iter_documents, tokenize
 
-def measure_lazy(corpus_path):
-    tracemalloc.start()
-    start_time = time.time()
+def get_corpus_stats(corpus_path: Path) -> tuple[int, int, list[tuple[str, int]]]:
+    """Повертає загальну кількість слів, унікальних слів та топ-10 найчастіших."""
+    total_words: int = 0
+    vocab: CounterType[str] = Counter()
     
-    vocab = Counter()
+    for text in iter_documents(corpus_path):
+        tokens = tokenize(text)
+        total_words += len(tokens)
+        vocab.update(tokens)
+        
+    unique_words = len(vocab)
+    top_10 = vocab.most_common(10)
     
-    for doc in iter_documents(corpus_path):
-        for token in tokenize(doc):
-            vocab[token] += 1
-            
-    _, peak_memory = tracemalloc.get_traced_memory()
-    tracemalloc.stop()
-    return time.time() - start_time, peak_memory / (1024 * 1024), vocab.most_common(5)
-
-def measure_greedy(corpus_path):
-    tracemalloc.start()
-    start_time = time.time()
-    
-    # Жадібний метод: завантажує ВСЕ в оперативну пам'ять
-    docs = list(iter_documents(corpus_path)) 
-    tokens = [token for doc in docs for token in tokenize(doc)]
-    vocab = Counter(tokens)
-    
-    _, peak_memory = tracemalloc.get_traced_memory()
-    tracemalloc.stop()
-    return time.time() - start_time, peak_memory / (1024 * 1024)
+    return total_words, unique_words, top_10
