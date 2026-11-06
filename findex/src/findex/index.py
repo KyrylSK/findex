@@ -2,10 +2,11 @@ import json
 import pickle
 from collections.abc import Mapping, Iterator
 from dataclasses import dataclass
-from typing import Optional, Any, Dict, List, Generator
+from typing import Optional, Any, Dict, List, Generator, Tuple
 from collections import defaultdict, Counter
 from functools import cached_property
 from contextlib import contextmanager
+from pathlib import Path
 
 @dataclass(frozen=True, slots=True)
 class DocMeta:
@@ -36,6 +37,12 @@ class InvertedIndex(Mapping[str, List[Posting]]):
             positions: Optional[tuple[int, ...]] = tuple(term_positions[term]) if self.store_positions else None
             posting = Posting(doc_id=doc_id, frequency=count, positions=positions)
             self.postings[term].append(posting)
+
+    def merge(self, other: 'InvertedIndex') -> None:
+        """Зливає інший індекс з поточним. Оновлює метадані та додає постінги."""
+        self.doc_meta.update(other.doc_meta)
+        for term, posts in other.postings.items():
+            self.postings[term].extend(posts)
 
     def build_from_pipeline(self, pipeline: Any) -> None:
         for doc_id, tokens in pipeline:
@@ -119,7 +126,7 @@ def open_index(filepath: str) -> Generator[InvertedIndex, None, None]:
     mode: str = 'r' if is_json else 'rb'
     encoding: Optional[str] = 'utf-8' if is_json else None
     
-    f = open(filepath, mode, encoding=encoding) # type: ignore # open dynamic mode
+    f = open(filepath, mode, encoding=encoding) # type: ignore
     try:
         if is_json:
             data: Dict[str, Any] = json.load(f)
@@ -136,3 +143,22 @@ def open_index(filepath: str) -> Generator[InvertedIndex, None, None]:
         yield index
     finally:
         f.close()
+
+
+def build_partial(docs_chunk: List[Tuple[int, Path]], store_positions: bool) -> InvertedIndex:
+    """
+    Функція рівня модуля для побудови частини індексу.
+    docs_chunk - список кортежів (doc_id, шлях_до_файлу).
+    """
+    from findex.core import tokenize  # Локальний імпорт для уникнення циклічної залежності
+    
+    idx = InvertedIndex(store_positions=store_positions)
+    for doc_id, file_path in docs_chunk:
+        try:
+            text = file_path.read_text(encoding="utf-8")
+            tokens = tokenize(text)
+            idx.add_document(doc_id, tokens)
+        except Exception:
+            # Ігноруємо помилки читання тут
+            pass
+    return idx
