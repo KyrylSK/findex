@@ -3,16 +3,17 @@ import json
 import logging
 import time
 import os
+import asyncio
 from pathlib import Path
 from typing import Optional, List, Tuple
 import typer
 from rich.console import Console
 from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.live import Live
 import concurrent.futures
 from functools import partial
 
-# Спроба імпортувати psutil для вимірювання пам'яті
 try:
     import psutil
     HAS_PSUTIL = True
@@ -45,12 +46,9 @@ def main(
     setup_logging(verbose)
 
 def chunk_data(data: list, num_chunks: int) -> list:
-    """Розбиває список на приблизно рівні частини для воркерів."""
-    if num_chunks <= 0:
-        return [data]
+    if num_chunks <= 0: return [data]
     chunk_size = max(1, len(data) // num_chunks)
     chunks = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
-    # Якщо залишився хвіст (через ділення з остачею), прикріплюємо його до останнього чанка
     if len(chunks) > num_chunks:
         tail = chunks.pop()
         chunks[-1].extend(tail)
@@ -78,8 +76,6 @@ def index(
     num_chunks = workers if executor != "serial" else 1
     chunks = chunk_data(docs_info, num_chunks)
 
-    console.print(f"Починаємо індексацію: {len(files)} файлів, {workers} воркер(ів), {executor}.")
-    
     start_wall = time.perf_counter()
     start_cpu = time.process_time()
 
@@ -87,22 +83,18 @@ def index(
 
     with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), console=err_console) as progress:
         task = progress.add_task(description=f"Індексація ({executor})...", total=len(chunks))
-        
-        # Використовуємо partial, щоб передати параметр store_positions
         func = partial(build_partial, store_positions=store_positions)
         
         if executor == "serial":
             for chunk in chunks:
                 partial_indices.append(func(chunk))
                 progress.advance(task)
-                
         elif executor == "threads":
             with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
                 futures = [pool.submit(func, chunk) for chunk in chunks]
                 for future in concurrent.futures.as_completed(futures):
                     partial_indices.append(future.result())
                     progress.advance(task)
-                    
         elif executor == "processes":
             with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as pool:
                 futures = [pool.submit(func, chunk) for chunk in chunks]
@@ -110,18 +102,11 @@ def index(
                     partial_indices.append(future.result())
                     progress.advance(task)
         else:
-            err_console.print(f"[bold red]Помилка:[/bold red] Невідомий executor '{executor}'.")
             raise typer.Exit(code=1)
 
-    # Фаза злиття (merge)
-    merge_start = time.perf_counter()
     main_index = InvertedIndex(store_positions=store_positions)
     for p_idx in partial_indices:
         main_index.merge(p_idx)
-    merge_end = time.perf_counter()
-
-    end_wall = time.perf_counter()
-    end_cpu = time.process_time()
 
     if output.suffix == ".json":
         main_index.save_json(str(output))
@@ -129,27 +114,6 @@ def index(
         main_index.save_pickle(str(output))
 
     console.print(f"[bold green]Успішно![/bold green] Створено індекс: {main_index} -> '{output}'")
-    
-    # Вивід статистики для бенчмаркінгу
-    wall_time = end_wall - start_wall
-    cpu_time = end_cpu - start_cpu
-    merge_time = merge_end - merge_start
-    
-    stat_table = Table(title="Метрики продуктивності")
-    stat_table.add_column("Метрика", style="cyan")
-    stat_table.add_column("Значення", style="magenta")
-    stat_table.add_row("Wall time (загальний)", f"{wall_time:.4f} с")
-    stat_table.add_row("CPU time (батьківський процес)", f"{cpu_time:.4f} с")
-    stat_table.add_row("Merge time (злиття)", f"{merge_time:.4f} с")
-    
-    if HAS_PSUTIL:
-        process = psutil.Process(os.getpid())
-        rss_mb = process.memory_info().rss / (1024 * 1024)
-        stat_table.add_row("RSS (пік пам'яті батька)", f"{rss_mb:.2f} MB")
-    else:
-        stat_table.add_row("RSS (пік пам'яті батька)", "psutil не встановлено")
-        
-    console.print(stat_table)
 
 @app.command()
 def search(
@@ -160,66 +124,105 @@ def search(
     json_output: bool = typer.Option(False, "--json", help="Вивід у форматі JSON в stdout")
 ) -> None:
     """Пошук у побудованому індексі."""
-    if not index_file.exists():
-        err_console.print(f"[bold red]Помилка:[/bold red] Файл індексу '{index_file}' не знайдено.")
-        raise typer.Exit(code=1)
-
     scorer: Scorer = BM25() if scorer_type.lower() == "bm25" else TfIdf()
+    with open_index(str(index_file)) as idx:
+        results = execute_search(query, idx, scorer, top_k=top_k)
 
-    try:
-        with open_index(str(index_file)) as idx:
-            results = execute_search(query, idx, scorer, top_k=top_k)
-    except Exception as e:
-        err_console.print(f"[bold red]Помилка запиту:[/bold red] {e}")
-        raise typer.Exit(code=1)
-
-    if json_output:
-        data = [{"doc_id": r.doc_id, "score": round(r.score, 4)} for r in results]
-        print(json.dumps(data, indent=2))
-        return
-
-    if not results:
-        console.print("[yellow]Нічого не знайдено.[/yellow]")
-        return
-
-    table = Table(title=f"Результати пошуку для: '{query}'")
+    table = Table(title=f"Результати пошуку: '{query}'")
     table.add_column("№", style="cyan", justify="right")
     table.add_column("Doc ID", style="magenta")
     table.add_column("Score", style="green")
-
     for i, res in enumerate(results, 1):
         table.add_row(str(i), str(res.doc_id), f"{res.score:.4f}")
-
     console.print(table)
 
 @app.command()
-def stats(
-    corpus: Path = typer.Argument(..., help="Шлях до папки з корпусом документів")
+def crawl(
+    start_url: str = typer.Argument(..., help="Початковий URL для обходу"),
+    max_pages: int = typer.Option(200, "--max-pages", "-m", help="Максимум сторінок"),
+    concurrency: int = typer.Option(5, "--concurrency", "-c", help="Кількість воркерів"),
+    output: Path = typer.Option(Path("crawled.jsonl"), "--output", "-o", help="Файл JSONL")
 ) -> None:
-    """Статистика корпусу текстів."""
-    if not corpus.is_dir():
-        err_console.print(f"[bold red]Помилка:[/bold red] Папка '{corpus}' не існує.")
-        raise typer.Exit(code=1)
+    """Асинхронний краулер веб-сторінок."""
+    asyncio.run(_async_crawl(start_url, max_pages, concurrency, output))
 
-    total_words, unique_words, top_10 = get_corpus_stats(corpus)
+async def _async_crawl(start_url: str, max_pages: int, concurrency: int, output: Path):
+    from findex.crawler import crawl as crawler_gen
+    
+    # Налаштовуємо запис у crawl.log
+    file_handler = logging.FileHandler("crawl.log", mode="w", encoding="utf-8")
+    file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+    crawler_logger = logging.getLogger("findex.crawler")
+    crawler_logger.setLevel(logging.INFO)
+    crawler_logger.addHandler(file_handler)
+    crawler_logger.propagate = False
+    
+    # Очищуємо вихідний JSONL файл
+    output.write_text("", encoding="utf-8")
 
-    table = Table(title=f"Статистика корпусу '{corpus}'")
-    table.add_column("Метрика", style="cyan")
-    table.add_column("Значення", style="green")
+    crawled_count = 0
+    error_count = 0
+    start_time = time.perf_counter()
 
-    table.add_row("Усього слів", str(total_words))
-    table.add_row("Унікальних слів (словник)", str(unique_words))
+    # Дашборд
+    table = Table(title=f"Краулінг: {start_url} (Воркерів: {concurrency})")
+    table.add_column("Зібрано", justify="right", style="green")
+    table.add_column("Стор/сек", justify="right", style="cyan")
+    table.add_column("Помилки", justify="right", style="red")
+    table.add_column("Черга", justify="right", style="yellow")
+    table.add_column("Останній URL", justify="left", style="magenta")
 
-    console.print(table)
+    with Live(table, refresh_per_second=4) as live, open(output, "a", encoding="utf-8") as f_jsonl:
+        async for result in crawler_gen(start_url, max_pages, concurrency):
+            status = result["status"]
+            url = result["url"]
+            text = result["text"]
+            
+            crawler_logger.info(f"[{status}] {url}")
+            
+            if status == 200:
+                crawled_count += 1
+                if text:
+                    record = {"url": url, "text": text}
+                    f_jsonl.write(json.dumps(record, ensure_ascii=False) + "\n")
+            else:
+                error_count += 1
+                
+            elapsed_total = time.perf_counter() - start_time
+            pages_per_sec = crawled_count / elapsed_total if elapsed_total > 0 else 0.0
+            
+            # Оновлюємо таблицю
+            table = Table(title=f"Краулінг: {start_url} (Воркерів: {concurrency})")
+            table.add_column("Зібрано", justify="right", style="green")
+            table.add_column("Стор/сек", justify="right", style="cyan")
+            table.add_column("Помилки", justify="right", style="red")
+            table.add_column("Черга", justify="right", style="yellow")
+            table.add_column("Останній URL", justify="left", style="magenta")
+            
+            display_url = url if len(url) <= 50 else url[:47] + "..."
+            table.add_row(
+                str(crawled_count),
+                f"{pages_per_sec:.2f}",
+                str(error_count),
+                str(result["queue_size"]),
+                f"[{status}] {display_url}"
+            )
+            live.update(table)
 
-    top_table = Table(title="Топ-10 найчастіших слів")
-    top_table.add_column("Слово", style="yellow")
-    top_table.add_column("Частота", style="magenta", justify="right")
-
-    for word, count in top_10:
-        top_table.add_row(word, str(count))
-
-    console.print(top_table)
+    elapsed_total = time.perf_counter() - start_time
+    stat_table = Table(title="Фінальна статистика")
+    stat_table.add_column("Метрика", style="cyan")
+    stat_table.add_column("Значення", style="magenta")
+    stat_table.add_row("Wall time (загальний)", f"{elapsed_total:.2f} с")
+    stat_table.add_row("Сторінок за секунду", f"{(crawled_count / elapsed_total):.2f}")
+    stat_table.add_row("Усього помилок", str(error_count))
+    
+    if HAS_PSUTIL:
+        rss_mb = psutil.Process(os.getpid()).memory_info().rss / (1024 * 1024)
+        stat_table.add_row("RSS (пік пам'яті)", f"{rss_mb:.2f} MB")
+        
+    console.print(stat_table)
+    console.print(f"[bold green]Краулінг завершено![/bold green] Дані збережено в {output}")
 
 if __name__ == "__main__":
     app()
