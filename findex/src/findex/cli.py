@@ -224,5 +224,16 @@ async def _async_crawl(start_url: str, max_pages: int, concurrency: int, output:
     console.print(stat_table)
     console.print(f"[bold green]Краулінг завершено![/bold green] Дані збережено в {output}")
 
+
+@app.command()
+def serve(
+    port: int = typer.Option(8000, "--port", "-p", help="Порт для вебсерверу"),
+    workers: int = typer.Option(1, "--workers", "-w", help="Кількість воркерів uvicorn")
+) -> None:
+    """Запуск вебсерверу FastAPI через uvicorn."""
+    import uvicorn
+    console.print(f"[bold green]Запуск findex web на http://127.0.0.1:{port}[/bold green]")
+    uvicorn.run("findex.web.routes:app", host="127.0.0.1", port=port, workers=workers, reload=True)
+
 if __name__ == "__main__":
     app()
