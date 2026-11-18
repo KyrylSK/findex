@@ -1,0 +1,24 @@
+name: CI & Benchmarks
+
+on:
+  push:
+    branches: ["main", "lab-*"]
+  pull_request:
+
+jobs:
+  test-and-benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Run unit tests and pytest-benchmark
+        run: uv run pytest -v --benchmark-only --benchmark-columns=min,mean,median,ops && uv run pytest -v --benchmark-skip

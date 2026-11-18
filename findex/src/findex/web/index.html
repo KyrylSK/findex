@@ -2,37 +2,48 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <title>findex - Вебпошук</title>
+    <title>findex v1.0.0 — Гібридний пошуковий рушій</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; background: #f9f9f9; color: #333; }
+        body { font-family: Arial, sans-serif; max-width: 860px; margin: 40px auto; padding: 0 20px; background: #f9f9f9; color: #333; }
         h1 { color: #2c3e50; }
-        form { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        input[type="text"] { width: 70%; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
-        select, button { padding: 10px 15px; font-size: 16px; border-radius: 4px; border: 1px solid #ccc; cursor: pointer; }
-        button { background: #3498db; color: white; border: none; }
+        form { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; gap: 10px; flex-wrap: wrap; }
+        input[type="text"] { flex: 1; min-width: 260px; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
+        select, button { padding: 10px 14px; font-size: 15px; border-radius: 4px; border: 1px solid #ccc; cursor: pointer; }
+        button { background: #3498db; color: white; border: none; font-weight: bold; }
         button:hover { background: #2980b9; }
+        .badge { display: inline-block; background: #eef6fc; color: #2980b9; padding: 3px 8px; border-radius: 4px; font-size: 13px; font-weight: bold; }
+        .error { background: #fdecea; color: #c0392b; padding: 12px; border-radius: 6px; margin-top: 15px; }
         .result-item { background: #fff; padding: 15px; margin-top: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .score { color: #e74c3c; font-weight: bold; }
-        .snippet { color: #666; margin-top: 5px; }
+        .snippet { color: #666; margin-top: 6px; }
     </style>
 </head>
 <body>
-    <h1>🔍 findex Web Search</h1>
+    <h1>🔍 findex Web Search <span class="badge">v1.0.0</span></h1>
     <form method="get" action="/">
         <input type="text" name="q" value="{{ q }}" placeholder="Введіть пошуковий запит..." required>
-        <select name="scorer">
+        <select name="mode" title="Режим пошуку">
+            <option value="lexical" {% if mode == 'lexical' %}selected{% endif %}>Lexical (Точний)</option>
+            <option value="semantic" {% if mode == 'semantic' %}selected{% endif %}>Semantic (Зміст)</option>
+            <option value="hybrid" {% if mode == 'hybrid' %}selected{% endif %}>Hybrid (RRF)</option>
+        </select>
+        <select name="scorer" title="Лексичний скорер">
             <option value="bm25" {% if scorer == 'bm25' %}selected{% endif %}>BM25</option>
             <option value="tfidf" {% if scorer == 'tfidf' %}selected{% endif %}>TfIdf</option>
         </select>
         <button type="submit">Шукати</button>
     </form>
 
-    {% if q %}
-        <h2>Результати для: "{{ q }}"</h2>
+    {% if error_msg %}
+        <div class="error">⚠️ {{ error_msg }}</div>
+    {% endif %}
+
+    {% if q and not error_msg %}
+        <h2>Результати ({{ mode }}) для: "{{ q }}"</h2>
         {% if results %}
             {% for r in results %}
                 <div class="result-item">
-                    <h3>Документ №{{ r.doc_id }} <span class="score">(Score: {{ "%.4f"|format(r.score) }}</span>)</h3>
+                    <h3>Документ №{{ r.doc_id }} <span class="score">(Score: {{ "%.4f"|format(r.score) }})</span></h3>
                     <p><b>Шлях:</b> {{ r.path }}</p>
                     <div class="snippet">{{ r.snippet }}</div>
                 </div>

@@ -2,14 +2,15 @@ import logging
 import traceback
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, HTMLResponse
 from jinja2 import Environment, FileSystemLoader
 
 from findex.index import open_index
-from findex.scoring import BM25, TfIdf, Scorer
+from findex.scoring import BM25, TfIdf, Scorer, SearchResult
 from findex.search import execute_search
+from findex.semantic import SemanticIndex, reciprocal_rank_fusion
 from findex.web.config import settings
 from findex.web.state import app_state
 
@@ -41,6 +42,16 @@ def _extract_doc_path(meta) -> str:
     return str(meta)
 
 
+def _run_lexical_web(query: str, index, scorer: Scorer, top_k: int) -> List[SearchResult]:
+    try:
+        return execute_search(query, index, scorer, top_k=top_k)
+    except ValueError:
+        words = [w.strip() for w in query.split() if w.strip()]
+        if len(words) > 1:
+            return execute_search(" OR ".join(words), index, scorer, top_k=top_k)
+        return []
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if settings.index_path.exists():
@@ -50,11 +61,18 @@ async def lifespan(app: FastAPI):
                 logger.info(f"Індекс успішно завантажено з {settings.index_path}")
         except Exception as e:
             logger.error(f"Помилка завантаження індексу: {e}")
+    if settings.embeddings_path.exists():
+        try:
+            app_state.semantic_index = SemanticIndex.load(settings.embeddings_path)
+            logger.info(f"Ембединги успішно завантажено з {settings.embeddings_path}")
+        except Exception as e:
+            logger.error(f"Помилка завантаження ембедингів: {e}")
     yield
     app_state.index = None
+    app_state.semantic_index = None
 
 
-app = FastAPI(title="findex Web Search", lifespan=lifespan)
+app = FastAPI(title="findex Web Search", version="1.0.0", lifespan=lifespan)
 
 templates_env = Environment(loader=FileSystemLoader(str(Path(__file__).parent)))
 
@@ -66,7 +84,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Request ID: {err_id} - Unexpected error: {exc}\n{traceback.format_exc()}")
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal Server Error", "error_id": str(err_id)}
+        content={"detail": "Internal Server Error", "error_id": str(err_id)},
     )
 
 
@@ -75,7 +93,7 @@ def health_check():
     if app_state.index is None:
         raise HTTPException(status_code=503, detail="Index not loaded")
     return {"status": "ok"}
-
+    
 
 @app.get("/stats")
 def stats():
@@ -83,10 +101,34 @@ def stats():
         raise HTTPException(status_code=503, detail="Index not loaded")
     terms_dict = getattr(app_state.index, "index", getattr(app_state.index, "postings", {}))
     doc_meta = getattr(app_state.index, "doc_meta", {})
+    chunks_count = (
+        int(len(app_state.semantic_index.chunk_doc_ids))
+        if app_state.semantic_index is not None
+        else 0
+    )
     return {
         "documents_count": len(doc_meta),
         "terms_count": len(terms_dict),
+        "semantic_chunks_count": chunks_count,
     }
+
+
+def _execute_mode_search(q: str, mode: str, scorer: str, top_k: int) -> List[SearchResult]:
+    scoring_obj: Scorer = BM25() if scorer == "bm25" else TfIdf()
+    if mode == "lexical":
+        if app_state.index is None:
+            raise HTTPException(status_code=503, detail="Index not loaded")
+        return _run_lexical_web(q, app_state.index, scoring_obj, top_k=top_k)
+    if mode == "semantic":
+        if app_state.semantic_index is None:
+            raise HTTPException(status_code=503, detail="Semantic embeddings not loaded")
+        return app_state.semantic_index.search(q, top_k=top_k)
+    if app_state.index is None or app_state.semantic_index is None:
+        raise HTTPException(status_code=503, detail="Both lexical index and semantic embeddings are required for hybrid mode")
+    candidate_k = max(top_k * 3, 20)
+    lex_res = _run_lexical_web(q, app_state.index, scoring_obj, top_k=candidate_k)
+    sem_res = app_state.semantic_index.search(q, top_k=candidate_k)
+    return reciprocal_rank_fusion(lex_res, sem_res, top_k=top_k)
 
 
 @app.get("/search")
@@ -94,13 +136,10 @@ def search(
     q: str = Query(..., min_length=1, description="Пошуковий запит"),
     k: int = Query(5, ge=1, le=50, description="Кількість результатів"),
     scorer: Literal["bm25", "tfidf"] = Query("bm25", description="Алгоритм ранжування"),
-    page: int = Query(1, ge=1, description="Номер сторінки")
+    mode: Literal["lexical", "semantic", "hybrid"] = Query("lexical", description="Режим пошуку"),
+    page: int = Query(1, ge=1, description="Номер сторінки"),
 ):
-    if app_state.index is None:
-        raise HTTPException(status_code=503, detail="Index not loaded")
-
-    scoring_obj: Scorer = BM25() if scorer == "bm25" else TfIdf()
-    results = execute_search(q, app_state.index, scoring_obj, top_k=k * page)
+    results = _execute_mode_search(q=q, mode=mode, scorer=scorer, top_k=k * page)
 
     start_idx = (page - 1) * k
     end_idx = start_idx + k
@@ -108,11 +147,12 @@ def search(
 
     return {
         "query": q,
+        "mode": mode,
         "scorer": scorer,
         "page": page,
         "k": k,
         "total_results": len(results),
-        "results": [{"doc_id": r.doc_id, "score": r.score} for r in page_results]
+        "results": [{"doc_id": r.doc_id, "score": r.score} for r in page_results],
     }
 
 
@@ -134,39 +174,56 @@ def get_document(doc_id: int):
     return {
         "doc_id": doc_id,
         "path": doc_path,
-        "content": content
+        "content": content,
     }
 
 
 @app.get("/", response_class=HTMLResponse)
-def index_page(request: Request, q: Optional[str] = None, scorer: str = "bm25", page: int = 1):
+def index_page(
+    request: Request,
+    q: Optional[str] = None,
+    scorer: str = "bm25",
+    mode: str = "lexical",
+    page: int = 1,
+):
     results = []
-    if q and app_state.index:
+    error_msg = None
+    if q:
         try:
-            scoring_obj: Scorer = BM25() if scorer == "bm25" else TfIdf()
-            raw_res = execute_search(q, app_state.index, scoring_obj, top_k=20)
+            raw_res = _execute_mode_search(q=q, mode=mode, scorer=scorer, top_k=20)
             for r in raw_res:
-                meta = _get_doc_meta(app_state.index, r.doc_id)
-                doc_path = _extract_doc_path(meta) if meta is not None else ""
+                doc_path = ""
+                if app_state.semantic_index and r.doc_id in app_state.semantic_index.doc_paths:
+                    doc_path = app_state.semantic_index.doc_paths[r.doc_id]
+                elif app_state.index is not None:
+                    meta = _get_doc_meta(app_state.index, r.doc_id)
+                    doc_path = _extract_doc_path(meta) if meta is not None else ""
                 try:
                     snippet = Path(doc_path).read_text(encoding="utf-8")[:200] + "..."
                 except Exception:
                     snippet = "..."
-                results.append({
-                    "doc_id": int(r.doc_id),
-                    "score": float(r.score),
-                    "snippet": str(snippet),
-                    "path": doc_path
-                })
+                results.append(
+                    {
+                        "doc_id": int(r.doc_id),
+                        "score": float(r.score),
+                        "snippet": str(snippet),
+                        "path": doc_path,
+                    }
+                )
+        except HTTPException as he:
+            error_msg = he.detail
         except Exception as e:
             logger.error(f"Search error on web page: {e}")
+            error_msg = str(e)
 
     template = templates_env.get_template("index.html")
     html_content = template.render(
         request=request,
         q=q or "",
         scorer=scorer,
+        mode=mode,
         page=page,
-        results=results
+        results=results,
+        error_msg=error_msg,
     )
     return HTMLResponse(content=html_content)

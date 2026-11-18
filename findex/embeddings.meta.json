@@ -1,0 +1,15 @@
+{
+  "model_name": "all-MiniLM-L6-v2",
+  "chunk_doc_ids": [
+    0,
+    1
+  ],
+  "chunks_text": [
+    "Python is a high-level, general-purpose programming language. Its design philosophy emphasizes code readability with the use of significant indentation. Python is dynamically typed and garbage-collected. It supports multiple programming paradigms, including structured (particularly procedural), object-oriented and functional programming. It is often described as a \"batteries-included\" language due to its comprehensive standard library. Guido van Rossum began working on Python in the late 1980s as a successor to the ABC programming language and first released it in 1991 as Python 0.9.0. Python's consistently ranking as one of the most popular programming languages is a testament to its flexibility and community support.",
+    "A search engine is a software system designed to carry out web searches. They search the World Wide Web in a systematic way for particular information specified in a textual web search query. The search results are generally presented in a line of results, often referred to as search engine results pages (SERPs). Some search engines also mine data available in databases or open directories. Unlike web directories, which are maintained only by human editors, search engines also maintain real-time information by running an algorithm on a web crawler. This is exactly what we are trying to simulate with our state-of-the-art findex project!"
+  ],
+  "doc_paths": {
+    "0": "data\\test1.txt",
+    "1": "data\\test2.txt"
+  }
+}
